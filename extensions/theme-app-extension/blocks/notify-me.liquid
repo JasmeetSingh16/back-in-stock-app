@@ -3,9 +3,13 @@
 <div class="notify-me-widget" data-product-id="{{ product.id }}" data-variant-id="{{ variant.id }}">
   {% unless variant.available %}
     <div class="notify-me-form">
-      <input type="email" placeholder="Enter your email" class="notify-me-email" />
-      <button class="notify-me-submit">Notify Me</button>
-      <p class="notify-me-success" style="display:none;">You're on the list ✅</p>
+      <p class="notify-me-heading">This item is currently out of stock</p>
+      <div class="notify-me-input-row">
+        <input type="email" placeholder="Enter your email" class="notify-me-email" />
+        <button class="notify-me-submit">Notify Me</button>
+      </div>
+      <p class="notify-me-error" style="display:none;"></p>
+      <p class="notify-me-success" style="display:none;">✅ You're on the list — we'll email you when it's back.</p>
     </div>
   {% endunless %}
 </div>
@@ -17,24 +21,95 @@
   "settings": []
 }
 {% endschema %}
+
+<style>
+  .notify-me-form {
+    max-width: 360px;
+    padding: 16px;
+    border: 1px solid #e1e1e1;
+    border-radius: 8px;
+    background: #fafafa;
+  }
+  .notify-me-heading {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+  }
+  .notify-me-input-row {
+    display: flex;
+    gap: 8px;
+  }
+  .notify-me-email {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .notify-me-email:disabled {
+    background: #f0f0f0;
+  }
+  .notify-me-submit {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .notify-me-submit:disabled {
+    background: #999;
+    cursor: not-allowed;
+  }
+  .notify-me-error {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: #d82c0d;
+  }
+  .notify-me-success {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: #108043;
+  }
+</style>
+
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.notify-me-widget').forEach(function (widget) {
       const form = widget.querySelector('.notify-me-form');
       const emailInput = widget.querySelector('.notify-me-email');
       const submitBtn = widget.querySelector('.notify-me-submit');
+      const errorMsg = widget.querySelector('.notify-me-error');
       const successMsg = widget.querySelector('.notify-me-success');
+      const inputRow = widget.querySelector('.notify-me-input-row');
 
       if (!form) return;
 
+      function showError(message) {
+        errorMsg.textContent = message;
+        errorMsg.style.display = 'block';
+      }
+
+      function clearError() {
+        errorMsg.style.display = 'none';
+        errorMsg.textContent = '';
+      }
+
       submitBtn.addEventListener('click', async function () {
+        clearError();
         const email = emailInput.value.trim();
-        if (!email || !email.includes('@')) {
-          alert('Please enter a valid email');
+
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          showError('Please enter a valid email address.');
           return;
         }
 
         submitBtn.disabled = true;
+        emailInput.disabled = true;
         submitBtn.textContent = 'Submitting...';
 
         try {
@@ -50,18 +125,27 @@
           });
 
           if (response.ok) {
-            emailInput.style.display = 'none';
-            submitBtn.style.display = 'none';
+            inputRow.style.display = 'none';
             successMsg.style.display = 'block';
           } else {
-            alert('Something went wrong. Please try again.');
+            showError('Something went wrong. Please try again.');
             submitBtn.disabled = false;
+            emailInput.disabled = false;
             submitBtn.textContent = 'Notify Me';
           }
         } catch (err) {
-          alert('Network error. Please try again.');
+          showError('Network error. Please check your connection and try again.');
           submitBtn.disabled = false;
+          emailInput.disabled = false;
           submitBtn.textContent = 'Notify Me';
+        }
+      });
+
+      // Allow Enter key to submit
+      emailInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          submitBtn.click();
         }
       });
     });
