@@ -1,0 +1,69 @@
+{% assign variant = product.selected_or_first_available_variant %}
+
+<div class="notify-me-widget" data-product-id="{{ product.id }}" data-variant-id="{{ variant.id }}">
+  {% unless variant.available %}
+    <div class="notify-me-form">
+      <input type="email" placeholder="Enter your email" class="notify-me-email" />
+      <button class="notify-me-submit">Notify Me</button>
+      <p class="notify-me-success" style="display:none;">You're on the list ✅</p>
+    </div>
+  {% endunless %}
+</div>
+
+{% schema %}
+{
+  "name": "Notify Me Button",
+  "target": "section",
+  "settings": []
+}
+{% endschema %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.notify-me-widget').forEach(function (widget) {
+      const form = widget.querySelector('.notify-me-form');
+      const emailInput = widget.querySelector('.notify-me-email');
+      const submitBtn = widget.querySelector('.notify-me-submit');
+      const successMsg = widget.querySelector('.notify-me-success');
+
+      if (!form) return;
+
+      submitBtn.addEventListener('click', async function () {
+        const email = emailInput.value.trim();
+        if (!email || !email.includes('@')) {
+          alert('Please enter a valid email');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        try {
+          const response = await fetch('/apps/back-in-stock/api/waitlist/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              productId: widget.dataset.productId,
+              variantId: widget.dataset.variantId,
+              email: email,
+              shop: Shopify.shop
+            })
+          });
+
+          if (response.ok) {
+            emailInput.style.display = 'none';
+            submitBtn.style.display = 'none';
+            successMsg.style.display = 'block';
+          } else {
+            alert('Something went wrong. Please try again.');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Notify Me';
+          }
+        } catch (err) {
+          alert('Network error. Please try again.');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Notify Me';
+        }
+      });
+    });
+  });
+</script>
